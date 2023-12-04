@@ -6,7 +6,7 @@ def _init(_q):
     global q
     q = _q
 
-
+# TODO: AÑADIR LA CURTOSIS
 def _type_num_is_numeric(typenum):
     if typenum >= 4 and typenum <= 9:
         return True
