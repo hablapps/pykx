@@ -134,11 +134,10 @@ class PandasMeta:
     @property
     def size(self):
         return q('{count[x] * count[cols x]}', self)
-    
+
     @property
     def values(self):
-        tab = self
-        return q('value peach', tab)
+        return q('value each', self)
 
     @api_return
     def mean(self, axis: int = 0, numeric_only: bool = False):
