@@ -137,11 +137,6 @@ class PandasMeta:
     
     @property
     def values(self):
-        tab = self
-        return q('value peach', tab)
-
-    @property
-    def values(self):
         return q('value each', self)
 
     @api_return
