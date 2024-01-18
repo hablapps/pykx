@@ -212,17 +212,18 @@ class PandasMeta:
     @api_return
     def isin(self, values):
         tab = self
-        dic_value = kx.q("{$[98h = type x; flip x; x]}", values)
-        return q("{flip x! {"
-                    "tipo: abs[type z[x][0]];"
-                    "y: $[99h = type y; y[x]; y];"
-                    "y: y[where tipo = abs type each y];"
-                    "$[count[y] = 0; "
-                         "count[z[x]]#0b;"
-                         "(|/) $[tipo = 10; "
-                                 "y"+"~"+"/:\:z[x];"
-                                 "y"+"="+"\:z[x]]]}[;z;y]"
-                    "each x}", tab.columns, tab, dic_value)
+        dic_values = kx.q("{$[98h = type x; flip x; x]}", values)
+        return kx.q("{flip x! {"
+                    "col: y x;"
+                    "ltype: abs[type col 0];"
+                    "z: $[99h = type z; z x; z];"
+                    "z@:where ltype = abs type each z;"
+                    "$[0 = count z; "
+                         "count[col]#0b;"
+                         "any $[ltype = 10; "
+                                 "z~/:\:col;"
+                                 "z=\:col]]}[;y;z]"
+                    "each x}", tab.columns, tab, dic_values)  
     
     @convert_result
     def all(self, axis=0, bool_only=False, skipna=True):
