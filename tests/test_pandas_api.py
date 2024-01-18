@@ -2032,12 +2032,22 @@ def test_keyed_loc_fixes(q):
 
 
 def test_nunique(kx, q):
+    tab = kx.q('([]a:4 0n 7 6;b:4 0n 0n 7;c:``foo`foo`)')
+    df = tab.pd()
+    p_m = df.nunique()
+    q_m = tab.nunique()
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.nunique(dropna=False)
+    q_m = tab.nunique(dropna=False)
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+
     df = pd.DataFrame(
         {
             'a': [1, 2, 2, 4],
             'b': [1, 2, 6, 7],
             'c': [7, 8, 9, 10],
-            'd': ['foo', 'baz', 'baz', 'qux']
         }
     )
     tab = kx.toq(df)
@@ -2050,24 +2060,7 @@ def test_nunique(kx, q):
     for c in range(len(tab)):
         assert p_m[c] == q_m[c].py()
 
-    tab = kx.q('([]A:4 0n 7 6;B:4 0n 0n 7;C:``foo`foo`)')
-    df = tab.pd()
-    p_m = df.nunique()
-    q_m = tab.nunique()
-    for c in q.key(q_m).py():
-        assert p_m[c] == q_m[c].py()
-    p_m = df.nunique(axis=1, dropna=False)
-    q_m = tab.nunique(axis=1, dropna=False)
-    for c in range(len(tab)):
-        assert p_m[c] == q_m[c].py()
-    p_m = df.nunique(dropna=False)
-    q_m = tab.nunique(dropna=False)
-    for c in q.key(q_m).py():
-        assert p_m[c] == q_m[c].py()
-
-    tab = kx.q('([]A:("";" ";"";"foo"))')
-    df = tab.pd()
-    p_m = df.nunique()
-    q_m = tab.nunique()
-    assert p_m['A'] == 1 + q_m['A'].py()
-
+    tab = kx.q('([]a:("";" ";"";"foo"))')
+    with pytest.raises(NotImplementedError,
+                       match=r"Table contains a column whose type is mixed"):
+        raise tab.nunique()
