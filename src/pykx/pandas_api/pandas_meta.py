@@ -134,7 +134,7 @@ class PandasMeta:
     @property
     def size(self):
         return q('{count[x] * count[cols x]}', self)
-    
+
     @property
     def values(self):
         return q('value each', self)
