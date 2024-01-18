@@ -2061,6 +2061,5 @@ def test_nunique(kx, q):
         assert p_m[c] == q_m[c].py()
 
     tab = kx.q('([]a:("";" ";"";"foo"))')
-    with pytest.raises(NotImplementedError,
-                       match=r"Table contains a column whose type is mixed"):
+    with pytest.raises(kx.QError):
         raise tab.nunique()

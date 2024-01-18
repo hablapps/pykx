@@ -260,8 +260,6 @@ class PandasMeta:
     @convert_result
     def nunique(self, axis=0, dropna=True):
         res, cols = preparse_computations(self, axis, skipna=False)
-        if q("any('[1<>count distinct@;type']')@", res).py():
-            raise NotImplementedError("Table contains a column whose type is mixed")
         filterNan = q('{$[all[10h=type each x]|11h = type x;x;'
                       'x where not null x]}each')
         res = filterNan(res) if dropna else res
