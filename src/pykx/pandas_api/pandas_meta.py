@@ -67,7 +67,7 @@ def preparse_computations(tab, axis=0, skipna=True, numeric_only=False, bool_onl
         skipna,
         axis
     )
-    return (res, cols if axis == 0 else q.til(len(res)))
+    return (res, cols if axis == 0 else q.til(len(res)), cols)
 
 
 # The simple computation functions all return a tuple of the results and the col names the results
@@ -212,41 +212,45 @@ class PandasMeta:
 
     @convert_result
     def all(self, axis=0, bool_only=False, skipna=True):
-        res, cols = preparse_computations(self, axis, skipna, bool_only=bool_only)
+        res, cols, _ = preparse_computations(self, axis, skipna, bool_only=bool_only)
         return (q('{"b"$x}', [all(x) for x in res]), cols)
 
     @convert_result
     def any(self, axis=0, bool_only=False, skipna=True):
-        res, cols = preparse_computations(self, axis, skipna, bool_only=bool_only)
+        res, cols, _ = preparse_computations(self, axis, skipna, bool_only=bool_only)
         return (q('{"b"$x}', [any(x) for x in res]), cols)
 
     @convert_result
     def max(self, axis=0, skipna=True, numeric_only=False):
-        res, cols = preparse_computations(self, axis, skipna, numeric_only)
+        res, cols, _ = preparse_computations(self, axis, skipna, numeric_only)
         return (q(
             '{[row] {$[11h=type x; {[x1; y1] $[x1 > y1; x1; y1]} over x; max x]} each row}',
             res
         ), cols)
 
     @convert_result
-    def idxmax(self, axis=0, skipna=True, numeric_only=False):
-        tab = self
-        res, cols = preparse_computations(tab, axis, skipna, numeric_only)
-        col_names = _get_numeric_only_subtable_with_bools(tab)[1] if numeric_only else tab.columns
-        max_vals = [elems.index(max(elems)) for elems in res]
-        return (max_vals if axis == 0 else [col_names[i] for i in max_vals], cols)
-
-    @convert_result
     def min(self, axis=0, skipna=True, numeric_only=False):
-        res, cols = preparse_computations(self, axis, skipna, numeric_only)
+        res, cols, _ = preparse_computations(self, axis, skipna, numeric_only)
         return (q(
             '{[row] {$[11h=type x; {[x1; y1] $[x1 < y1; x1; y1]} over x; min x]} each row}',
             res
         ), cols)
 
     @convert_result
+    def idxmax(self, axis=0, skipna=True, numeric_only=False):
+        tab = self
+        axis = q('{$[11h~type x; `index`columns?x; x]}', axis)
+        res, cols, ix = preparse_computations(tab, axis, skipna, numeric_only)
+        return (q(
+            '''{[row;tab;axis]
+                row:{$[11h~type x; {[x1; y1] $[x1 > y1; x1; y1]} over x; max x]} each row;
+                m:$[0~axis; (::); flip] value flip tab;
+                $[0~axis; (::); cols tab] m {$[abs type y;x]?y}' row}
+            ''', res, tab[ix], axis), cols)
+
+    @convert_result
     def prod(self, axis=0, skipna=True, numeric_only=False, min_count=0):
-        res, cols = preparse_computations(self, axis, skipna, numeric_only)
+        res, cols, _ = preparse_computations(self, axis, skipna, numeric_only)
         return (q(
             '{[row; minc] {$[y > 0; $[y>count[x]; 0N; prd x]; prd x]}[;minc] each row}',
             res,
@@ -255,7 +259,7 @@ class PandasMeta:
 
     @convert_result
     def sum(self, axis=0, skipna=True, numeric_only=False, min_count=0):
-        res, cols = preparse_computations(self, axis, skipna, numeric_only)
+        res, cols, _ = preparse_computations(self, axis, skipna, numeric_only)
         return (q(
             '{[row; minc]'
             '{$[y > 0;'
