@@ -59,6 +59,15 @@ def test_df_size(q):
     assert (df.size == df.pd().size)
 
 
+def test_df_values(q):
+    tab = q('([]p: 10?100; s: 10?`a`b`c`d; id: 10?"abc123; nulls: 10?0n")')
+    pandas_table = tab.pd()
+    assert pandas_table.values.tolist() == tab.values.py()
+    tab = q('([]p: 2?100; n: (::; ::))')
+    pandas_table = tab.pd()
+    assert pandas_table.values.tolist() == tab.values.py()
+
+
 def test_df_head(kx, q):
     df = q('([] til 10; 10 - til 10)')
     assert check_result_and_type(kx, df.head(), q('5 # ([] til 10; 10 - til 10)'))
