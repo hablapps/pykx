@@ -1,6 +1,7 @@
 from . import api_return
 from ..exceptions import QError
 
+
 def _init(_q):
     global q
     q = _q
@@ -208,23 +209,23 @@ class PandasMeta:
         if numeric_only:
             tab = _get_numeric_only_subtable(self)
         return q.abs(tab)
-    
+
     @api_return
     def isin(self, values):
         tab = self
-        dic_values = kx.q("{$[98h = type x; flip x; x]}", values)
-        return kx.q("{flip x! {"
-                    "col: y x;"
-                    "ltype: abs[type col 0];"
-                    "z: $[99h = type z; z x; z];"
-                    "z@:where ltype = abs type each z;"
-                    "$[0 = count z; "
-                         "count[col]#0b;"
-                         "any $[ltype = 10; "
-                                 "z~/:\:col;"
-                                 "z=\:col]]}[;y;z]"
-                    "each x}", tab.columns, tab, dic_values)  
-    
+        dic_values = q("{$[98h = type x; flip x; x]}", values)
+        return q("{flip x! {"
+                 "col: y x;"
+                 "ltype: abs[type col 0];"
+                 "z: $[99h = type z; z x; z];"
+                 "z@:where ltype = abs type each z;"
+                 "$[0 = count z; "
+                 "count[col]#0b;"
+                 "any $[ltype = 10; "
+                 r'z~/:\:col;'
+                 r'z=\:col]]}[;y;z]'
+                 "each x}", tab.columns, tab, dic_values)
+
     @convert_result
     def all(self, axis=0, bool_only=False, skipna=True):
         res, cols = preparse_computations(self, axis, skipna, bool_only=bool_only)
