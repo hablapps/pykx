@@ -213,18 +213,52 @@ class PandasMeta:
     @api_return
     def isin(self, values):
         tab = self
-        dic_values = q("{$[98h = type x; flip x; x]}", values)
-        return q("{flip x! {"
-                 "col: y x;"
-                 "ltype: abs[type col 0];"
-                 "z: $[99h = type z; z x; z];"
-                 "z@:where ltype = abs type each z;"
-                 "$[0 = count z; "
-                 "count[col]#0b;"
-                 "any $[ltype = 10; "
-                 r'z~/:\:col;'
-                 r'z=\:col]]}[;y;z]'
-                 "each x}", tab.columns, tab, dic_values)
+        key_table = 'KeyedTable' in str(type(tab))
+        key_value = 'KeyedTable' in str(type(values))
+        n_rows = 0
+
+        if key_value and not key_table:
+            return q("""{u:(cols x);
+                        v:(count[u],count[x])#0b;
+                        flip u!v}""", tab)
+
+        if key_value and key_table:
+            n_rows, tab, values, kcols = q("""{t:max 0, count[x] -
+                                                count u:(key y) inter key x;
+                                                    (t;x value each u; value y;
+                                                key x)}""", tab, values)
+
+        dic_value, is_tab = q("""{$[98h = type x;
+                                    (flip $[y;value x;x]; 1b);
+                                    (x; 0b)]}""", values, key_value)
+
+        if key_table and not key_value and is_tab:
+            return q("""{u:(cols value x);
+                        v:(count[u],count[x])#0b;
+                        (cols kcol) xkey flip (kcol:flip key x),u!v}""", tab)
+
+        ftable = q("""{ [table; values; is_tab; n_rows; key_table]
+                    table: $[key_table;value table;table];
+                    flip (cols table)!
+                    {[col_name;tab;values;v_is_tab; n_rows]
+                        col: tab col_name;
+                        ltype: .Q.ty col;
+                        values: $[99h~type values; values col_name; values];
+                        $[v_is_tab or ltype=" ";;
+                                values@:where (lower ltype) = .Q.t abs type each values];
+                        $[0 = count values;
+                                    (n_rows + count[col])#0b;
+                                    $[v_is_tab;
+                                        $[any ltype = (" ";"C");~';=]
+                                        [mlen#col;mlen#values],
+                                            (n_rows + max 0,count[col]-
+                                                mlen: min count[values],
+                                                    count[col])#0b;
+                                        any $[any ltype = (" ";"C");~/:\:;=\:][values;col]
+                                        ]
+                            ]}[;table;values;is_tab; n_rows]
+                    each cols table}""", tab, dic_value, is_tab, n_rows, key_table)
+        return ftable.set_index(kcols if key_value else q.key(tab)) if key_table else ftable
 
     @convert_result
     def all(self, axis=0, bool_only=False, skipna=True):
