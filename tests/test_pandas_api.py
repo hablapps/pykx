@@ -1840,6 +1840,41 @@ def test_pandas_abs(kx, q):
         tab.abs()
 
 
+def test_pandas_round(kx, q):
+    q_tab = q('([]c1:4 5 10 15 20 25h;'
+              'c2:4 5 10 15 20 25i;'
+              'c3:4 5 10 15 20 25j;'
+              'c4:0 0.10 0.25 0.30 0.45 0.50e;'
+              'c5:0 0.10 0.25 0.30 0.45 0.50f;'
+              'c6:`a`b`c`d`e`f)')
+    p_tab = q_tab.pd()
+
+    pd.testing.assert_frame_equal(p_tab.round(),
+                                  q_tab.round().pd())
+
+    pd.testing.assert_frame_equal(q_tab.round(0).pd(),
+                                  q_tab.round().pd())
+
+    pd.testing.assert_frame_equal(p_tab.round(2),
+                                  q_tab.round(2).pd())
+
+    pd.testing.assert_frame_equal(p_tab.round(-1),
+                                  q_tab.round(-1).pd())
+
+    dict_test = {'c1': -2,
+                 'c2': -1,
+                 'c3': -0,
+                 'c4':  1,
+                 'c5':  2,
+                 'c6':  3,
+                 'c7':  4}
+
+    q_res = q_tab.round(dict_test)
+    pd.testing.assert_frame_equal(p_tab.round(dict_test), q_res.pd())
+
+    pd.testing.assert_frame_equal(q_tab.dtypes.pd(), q_res.dtypes.pd())
+
+
 def test_pandas_min(q):
     tab = q('([] sym: 100?`foo`bar`baz`qux; price: 250.0f - 100?500.0f; ints: 100 - 100?200)')
     df = tab.pd()
