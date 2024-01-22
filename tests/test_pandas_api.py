@@ -2038,3 +2038,37 @@ def test_keyed_loc_fixes(q):
         mkt[['k1', 'y']]
     with pytest.raises(KeyError):
         mkt['k1']
+
+
+def test_nunique(kx, q):
+    tab = kx.q('([]a:4 0n 7 6;b:4 0n 0n 7;c:``foo`foo`)')
+    df = tab.pd()
+    p_m = df.nunique()
+    q_m = tab.nunique()
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.nunique(dropna=False)
+    q_m = tab.nunique(dropna=False)
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+
+    df = pd.DataFrame(
+        {
+            'a': [1, 2, 2, 4],
+            'b': [1, 2, 6, 7],
+            'c': [7, 8, 9, 10],
+        }
+    )
+    tab = kx.toq(df)
+    p_m = df.nunique()
+    q_m = tab.nunique()
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.nunique(axis=1)
+    q_m = tab.nunique(axis=1)
+    for c in range(len(tab)):
+        assert p_m[c] == q_m[c].py()
+
+    tab = kx.q('([]a:("";" ";"";"foo"))')
+    with pytest.raises(kx.QError):
+        raise tab.nunique()
