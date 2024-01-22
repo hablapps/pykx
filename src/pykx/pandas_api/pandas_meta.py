@@ -155,6 +155,33 @@ class PandasMeta:
         )
 
     @api_return
+    def kurt(self, axis: int = 0, numeric_only: bool = False):
+        tab = self
+        if 'Keyed' in str(type(tab)):
+            tab = q.value(tab)
+        if numeric_only:
+            tab = _get_numeric_only_subtable(tab)
+
+        key_str = '' if axis == 0 else '`$string '
+        val_str = '' if axis == 0 else '"f"$value '
+        query_str = 'cols tab' if axis == 0 else 'til count tab'
+        where_str = ' where not (::)~/:r[;1]'
+        kurt_str = ('{res: x - avg x;'
+                    'n: count x;'
+                    'm2: sum res_sq: res xexp 2;'
+                    'm4: sum res_sq xexp 2;'
+                    'adj: 3 * xexp[n - 1;2] % (n - 2) * (n - 3);'
+                    'num: n * (n + 1) * (n - 1) * m4;'
+                    'den: (n - 2) * (n - 3) * m2 xexp 2;'
+                    '(num % den) - adj}')
+        return q(
+            '{[tab]'
+            f'r:{{[tab; x] ({key_str}x; {kurt_str} {val_str}tab[x])}}[tab;] each {query_str};'
+            f'(,/) {{(enlist x 0)!(enlist x 1)}} each r{where_str}}}',
+            tab
+        )
+
+    @api_return
     def median(self, axis: int = 0, numeric_only: bool = False):
         tab = self
         if 'Keyed' in str(type(tab)):

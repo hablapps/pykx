@@ -1543,6 +1543,79 @@ def test_mean(kx, q):
         q_m = tab.mean(axis=1)
 
 
+def test_kurt(kx, q):
+    df = pd.DataFrame(
+        {
+            'a': [1, 2, 2, 4],
+            'b': [1, 2, 6, 7],
+            'c': [7, 8, 9, 10],
+            'd': [7, 11, 14, 14]
+        }
+    )
+    tab = kx.toq(df)
+    p_m = df.kurt()
+    q_m = tab.kurt()
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.kurt(axis=1)
+    q_m = tab.kurt(axis=1)
+    for c in range(len(q.cols(tab))):
+        assert p_m[c] == q_m[q('{`$string x}', c)].py()
+
+    q['tab'] = kx.toq(df)
+    tab = q('1!`idx xcols update idx: til count tab from tab')
+    p_m = df.kurt()
+    q_m = tab.kurt()
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.kurt(axis=1)
+    q_m = tab.kurt(axis=1)
+    for c in range(len(q.cols(tab)) - 1):
+        assert p_m[c] == q_m[q('{`$string x}', c)].py()
+
+    df = pd.DataFrame(
+        {
+            'a': [1, 2, 2, 4],
+            'b': [1, 2, 6, 7],
+            'c': [7, 8, 9, 10],
+            'd': ['foo', 'bar', 'baz', 'qux']
+        }
+    )
+    tab = kx.toq(df)
+    p_m = df.kurt(numeric_only=True)
+    q_m = tab.kurt(numeric_only=True)
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.kurt(axis=1, numeric_only=True)
+    q_m = tab.kurt(axis=1, numeric_only=True)
+    for c in range(len(q.cols(tab))):
+        assert np.isnan(p_m[c]) & np.isnan(q_m[q('{`$string x}', c)].py())
+
+    df = pd.DataFrame(
+        {
+            'a': [1, 2, 2, 4],
+            'b': [1, 2, 6, 7],
+            'c': [7, 8, 9, 10],
+            'd': [11, 12, 13, 14],
+            'e': ['foo', 'bar', 'baz', 'qux']
+        }
+    )
+    tab = kx.toq(df)
+    p_m = df.kurt(numeric_only=True)
+    q_m = tab.kurt(numeric_only=True)
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.kurt(axis=1, numeric_only=True)
+    q_m = tab.kurt(axis=1, numeric_only=True)
+    for c in range(len(q.cols(tab)) - 1):
+        assert p_m[c] == q_m[q('{`$string x}', c)].py()
+
+    with pytest.raises(kx.QError):
+        q_m = tab.kurt()
+    with pytest.raises(kx.QError):
+        q_m = tab.kurt(axis=1)
+
+
 def test_median(kx, q):
     df = pd.DataFrame(
         {
