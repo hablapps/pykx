@@ -2228,6 +2228,30 @@ def test_keyed_loc_fixes(q):
         mkt['k1']
 
 
+def test_pandas_isin(kx):
+    tab = kx.q("""([] k1: 0n 1. 0n 2. 0n;
+                      k2: ("A";" ";"B";" ";"A");
+                      k3: (`a;1.;`c;5;`d))""")
+    keyed_tab = kx.q("""([`a`b`c`d`e]
+                        k1: 0n 1. 0n 2. 0n;
+                        k2: ("A";" ";"B";" ";"A");
+                        k3: (`a;1.;`c;5;`d))""")
+
+    list_value = kx.q('(`a;1.;"A")')
+    dict_value = {"k1": [1., 2., 3.]}
+    tab_value = kx.q('([] k1: 1. 2. 3.; k2: ("A";"B";"C"))')
+    keyed_tab_value = kx.q('([`a`b] k1: 1. 2.; k2: ("A";"B"))')
+
+    assert tab.isin(list_value).pd().equals(tab.pd().isin(list_value.py()))
+    assert tab.isin(dict_value).pd().equals(tab.pd().isin(dict_value))
+    assert tab.isin(tab_value).pd().equals(tab.pd().isin(tab_value.pd()))
+    assert tab.isin(keyed_tab_value).pd().equals(tab.pd().isin(keyed_tab_value))
+    assert keyed_tab.isin(list_value).pd().equals(keyed_tab.pd().isin(list_value.py()))
+    assert keyed_tab.isin(dict_value).pd().equals(keyed_tab.pd().isin(dict_value))
+    assert keyed_tab.isin(keyed_tab_value).pd().equals(keyed_tab.pd().isin(keyed_tab_value.pd()))
+    assert keyed_tab.isin(tab_value).pd().equals(keyed_tab.pd().isin(tab_value))
+
+
 def test_nunique(kx, q):
     tab = kx.q('([]a:4 0n 7 6;b:4 0n 0n 7;c:``foo`foo`)')
     df = tab.pd()
