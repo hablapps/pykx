@@ -1,3 +1,5 @@
+from typing import Dict, Union
+
 from . import api_return
 from ..exceptions import QError
 
@@ -104,6 +106,28 @@ _type_mapping = {'c': b'kx.Char',
                  '': b'kx.List'}
 
 
+# Define the mapping between the returns of kx.*Vector.t and the associated typechar
+_typenum_to_typechar_mapping = {0: '',
+                                1: 'b',
+                                2: 'g',
+                                4: 'x',
+                                5: 'h',
+                                6: 'i',
+                                7: 'j',
+                                8: 'e',
+                                9: 'f',
+                                10: 'c',
+                                11: 's',
+                                12: 'p',
+                                14: 'd',
+                                15: 'z',
+                                16: 'n',
+                                17: 'u',
+                                18: 'v',
+                                19: 't',
+                                13: 'm'}
+
+
 class PandasMeta:
     # Dataframe properties
     @property
@@ -135,6 +159,10 @@ class PandasMeta:
     def size(self):
         return q('{count[x] * count[cols x]}', self)
 
+    @property
+    def values(self):
+        return q('value each', self)
+
     @api_return
     def mean(self, axis: int = 0, numeric_only: bool = False):
         tab = self
@@ -150,6 +178,33 @@ class PandasMeta:
         return q(
             '{[tab]'
             f'r:{{[tab; x] ({key_str}x; avg {val_str}tab[x])}}[tab;] each {query_str};'
+            f'(,/) {{(enlist x 0)!(enlist x 1)}} each r{where_str}}}',
+            tab
+        )
+
+    @api_return
+    def kurt(self, axis: int = 0, numeric_only: bool = False):
+        tab = self
+        if 'Keyed' in str(type(tab)):
+            tab = q.value(tab)
+        if numeric_only:
+            tab = _get_numeric_only_subtable(tab)
+
+        key_str = '' if axis == 0 else '`$string '
+        val_str = '' if axis == 0 else '"f"$value '
+        query_str = 'cols tab' if axis == 0 else 'til count tab'
+        where_str = ' where not (::)~/:r[;1]'
+        kurt_str = ('{res: x - avg x;'
+                    'n: count x;'
+                    'm2: sum res_sq: res xexp 2;'
+                    'm4: sum res_sq xexp 2;'
+                    'adj: 3 * xexp[n - 1;2] % (n - 2) * (n - 3);'
+                    'num: n * (n + 1) * (n - 1) * m4;'
+                    'den: (n - 2) * (n - 3) * m2 xexp 2;'
+                    '(num % den) - adj}')
+        return q(
+            '{[tab]'
+            f'r:{{[tab; x] ({key_str}x; {kurt_str} {val_str}tab[x])}}[tab;] each {query_str};'
             f'(,/) {{(enlist x 0)!(enlist x 1)}} each r{where_str}}}',
             tab
         )
@@ -200,6 +255,30 @@ class PandasMeta:
             f'cs: {cs_str};'
             f'm: {m_str} each r;'
             f'cs !/: {flip_m}m}}',
+            tab
+        )
+
+    @api_return
+    def sem(self, axis: int = 0, ddof: int = 1, numeric_only: bool = False):
+        tab = self
+        if 'Keyed' in str(type(tab)):
+            tab = q.value(tab)
+        if numeric_only:
+            tab = _get_numeric_only_subtable(tab)
+
+        key_str = '' if axis == 0 else '`$string '
+        val_str = '' if axis == 0 else '"f"$value '
+        query_str = 'cols[tab]' if axis == 0 else 'til[count[tab]]'
+        where_str = ' where not (::)~/:r[;1]'
+        sem_str = f'{{dev[x] % sqrt count[x]-{ddof}}}'
+
+        if ddof == len(tab):
+            return q(f'{{[tab]{query_str}!count[{query_str}]#0n}}', tab)
+
+        return q(
+            '{[tab]'
+            f'r:{{[tab; x] ({key_str}x; {sem_str} {val_str}tab[x])}}[tab;] each {query_str};'
+            f'(,/) {{(enlist x 0)!(enlist x 1)}} each r{where_str}}}',
             tab
         )
 
@@ -257,6 +336,27 @@ class PandasMeta:
                         each cols table}""", tab, dic_value, is_tab, n_rows)
         return ftable.set_index(kcols) if key_table else ftable
 
+    def round(self, decimals: Union[int, Dict[str, int]] = 0):
+        tab = self
+        if 'Keyed' in str(type(tab)):
+            tab = q.value(tab)
+
+        affected_cols = _get_numeric_only_subtable(tab).columns.py()
+        type_dict = {col: _typenum_to_typechar_mapping[tab[col].t] for col in affected_cols}
+
+        cast_back = q('{string[y][0]$x}')
+
+        if isinstance(decimals, int):
+            dec_dict = {col: decimals for col in affected_cols}
+        else:
+            dec_dict = {col: decimals[col] for col in affected_cols}
+
+        rounded = {col: [cast_back(round(elem, dec_dict[col]), type_dict[col])
+                         for elem in tab[col]]
+                   for col in dec_dict}
+
+        return q.qsql.update(tab, columns=rounded)
+
     @convert_result
     def all(self, axis=0, bool_only=False, skipna=True):
         res, cols = preparse_computations(self, axis, skipna, bool_only=bool_only)
@@ -303,6 +403,14 @@ class PandasMeta:
             res,
             min_count
         ), cols)
+
+    @convert_result
+    def nunique(self, axis=0, dropna=True):
+        res, cols = preparse_computations(self, axis, skipna=False)
+        filternan = q('{$[all[10h=type each x]|11h = type x;x;'
+                      'x where not null x]}each')
+        res = filternan(res) if dropna else res
+        return (q("('[count;distinct]')", res), cols)
 
     def agg(self, func, axis=0, *args, **kwargs): # noqa: C901
         if 'KeyedTable' in str(type(self)):

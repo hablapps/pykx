@@ -59,6 +59,15 @@ def test_df_size(q):
     assert (df.size == df.pd().size)
 
 
+def test_df_values(q):
+    tab = q('([]p: 10?100; s: 10?`a`b`c`d; id: 10?"abc123; nulls: 10?0n")')
+    pandas_table = tab.pd()
+    assert pandas_table.values.tolist() == tab.values.py()
+    tab = q('([]p: 2?100; n: (::; ::))')
+    pandas_table = tab.pd()
+    assert pandas_table.values.tolist() == tab.values.py()
+
+
 def test_df_head(kx, q):
     df = q('([] til 10; 10 - til 10)')
     assert check_result_and_type(kx, df.head(), q('5 # ([] til 10; 10 - til 10)'))
@@ -1489,6 +1498,86 @@ def test_df_sample(kx, q):
         t.sample(ignore_index=True)
 
 
+def test_sem(kx, q):
+    df = pd.DataFrame(
+        {
+            'a': [1, 2, 2, 4],
+            'b': [1, 2, 6, 7],
+            'c': [7, 8, 9, 10],
+            'd': [7, 11, 14, 14]
+        }
+    )
+    precision = 1e-16
+    tab = kx.toq(df)
+    p_m = df.sem()
+    q_m = tab.sem()
+    assert all([p_m[c] == pytest.approx(q_m[c].py(),  precision)
+                for c in q.key(q_m).py()])
+
+    p_m = df.sem(axis=1)
+    q_m = tab.sem(axis=1)
+    assert all([p_m[c] == pytest.approx(q_m[q('{`$string x}', c)].py(), precision)
+                for c in range(len(q.cols(tab)))])
+
+    p_m = df.sem(ddof=0)
+    q_m = tab.sem(ddof=0)
+    assert all([p_m[c] == pytest.approx(q_m[c].py(),  precision)
+                for c in q.key(q_m).py()])
+
+    p_m = df.sem(ddof=4)
+    q_m = tab.sem(ddof=4)
+    assert all([np.isnan(p_m[c]) & np.isnan(q_m[c].py())
+                for c in q.key(q_m).py()])
+
+    q['tab'] = kx.toq(df)
+    tab = q('1!`idx xcols update idx: til count tab from tab')
+    p_m = df.sem()
+    q_m = tab.sem()
+    assert all([p_m[c] == pytest.approx(q_m[c].py(), precision)
+                for c in q.key(q_m).py()])
+
+    p_m = df.sem(axis=1)
+    q_m = tab.sem(axis=1)
+    assert all([p_m[c] == pytest.approx(q_m[q('{`$string x}', c)].py(), precision)
+                for c in range(len(q.cols(tab)) - 1)])
+
+    df = pd.DataFrame(
+        {
+            'a': [1, 2, 2, 4],
+            'b': [1, 2, 6, 7],
+            'c': [7, 8, 9, 10],
+            'd': ['foo', 'bar', 'baz', 'qux']
+        }
+    )
+    tab = kx.toq(df)
+    p_m = df.sem(numeric_only=True)
+    q_m = tab.sem(numeric_only=True)
+    assert all([p_m[c] == pytest.approx(q_m[c].py(), precision)
+                for c in q.key(q_m).py()])
+
+    p_m = df.sem(axis=1, numeric_only=True)
+    q_m = tab.sem(axis=1, numeric_only=True)
+    assert all([p_m[c] == pytest.approx(q_m[q('{`$string x}', c)].py(), precision)
+                for c in range(len(q.cols(tab)))])
+
+    with pytest.raises(kx.QError):
+        q_m = tab.sem()
+    with pytest.raises(kx.QError):
+        q_m = tab.sem(axis=1)
+
+    df = pd.DataFrame({'a': [1]})
+    tab = kx.toq(df)
+    p_m = df.sem()
+    q_m = tab.sem()
+    assert all([np.isnan(p_m[c]) & np.isnan(q_m[c].py())
+                for c in q.key(q_m).py()])
+
+    p_m = df.sem(ddof=0)
+    q_m = tab.sem(ddof=0)
+    assert all([p_m[c] == pytest.approx(q_m[c].py(), precision)
+                for c in q.key(q_m).py()])
+
+
 def test_mean(kx, q):
     df = pd.DataFrame(
         {
@@ -1541,6 +1630,79 @@ def test_mean(kx, q):
         q_m = tab.mean()
     with pytest.raises(kx.QError):
         q_m = tab.mean(axis=1)
+
+
+def test_kurt(kx, q):
+    df = pd.DataFrame(
+        {
+            'a': [1, 2, 2, 4],
+            'b': [1, 2, 6, 7],
+            'c': [7, 8, 9, 10],
+            'd': [7, 11, 14, 14]
+        }
+    )
+    tab = kx.toq(df)
+    p_m = df.kurt()
+    q_m = tab.kurt()
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.kurt(axis=1)
+    q_m = tab.kurt(axis=1)
+    for c in range(len(q.cols(tab))):
+        assert p_m[c] == q_m[q('{`$string x}', c)].py()
+
+    q['tab'] = kx.toq(df)
+    tab = q('1!`idx xcols update idx: til count tab from tab')
+    p_m = df.kurt()
+    q_m = tab.kurt()
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.kurt(axis=1)
+    q_m = tab.kurt(axis=1)
+    for c in range(len(q.cols(tab)) - 1):
+        assert p_m[c] == q_m[q('{`$string x}', c)].py()
+
+    df = pd.DataFrame(
+        {
+            'a': [1, 2, 2, 4],
+            'b': [1, 2, 6, 7],
+            'c': [7, 8, 9, 10],
+            'd': ['foo', 'bar', 'baz', 'qux']
+        }
+    )
+    tab = kx.toq(df)
+    p_m = df.kurt(numeric_only=True)
+    q_m = tab.kurt(numeric_only=True)
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.kurt(axis=1, numeric_only=True)
+    q_m = tab.kurt(axis=1, numeric_only=True)
+    for c in range(len(q.cols(tab))):
+        assert np.isnan(p_m[c]) & np.isnan(q_m[q('{`$string x}', c)].py())
+
+    df = pd.DataFrame(
+        {
+            'a': [1, 2, 2, 4],
+            'b': [1, 2, 6, 7],
+            'c': [7, 8, 9, 10],
+            'd': [11, 12, 13, 14],
+            'e': ['foo', 'bar', 'baz', 'qux']
+        }
+    )
+    tab = kx.toq(df)
+    p_m = df.kurt(numeric_only=True)
+    q_m = tab.kurt(numeric_only=True)
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.kurt(axis=1, numeric_only=True)
+    q_m = tab.kurt(axis=1, numeric_only=True)
+    for c in range(len(q.cols(tab)) - 1):
+        assert p_m[c] == q_m[q('{`$string x}', c)].py()
+
+    with pytest.raises(kx.QError):
+        q_m = tab.kurt()
+    with pytest.raises(kx.QError):
+        q_m = tab.kurt(axis=1)
 
 
 def test_median(kx, q):
@@ -1773,6 +1935,41 @@ def test_pandas_abs(kx, q):
 
     with pytest.raises(kx.QError):
         tab.abs()
+
+
+def test_pandas_round(kx, q):
+    q_tab = q('([]c1:4 5 10 15 20 25h;'
+              'c2:4 5 10 15 20 25i;'
+              'c3:4 5 10 15 20 25j;'
+              'c4:0 0.10 0.25 0.30 0.45 0.50e;'
+              'c5:0 0.10 0.25 0.30 0.45 0.50f;'
+              'c6:`a`b`c`d`e`f)')
+    p_tab = q_tab.pd()
+
+    pd.testing.assert_frame_equal(p_tab.round(),
+                                  q_tab.round().pd())
+
+    pd.testing.assert_frame_equal(q_tab.round(0).pd(),
+                                  q_tab.round().pd())
+
+    pd.testing.assert_frame_equal(p_tab.round(2),
+                                  q_tab.round(2).pd())
+
+    pd.testing.assert_frame_equal(p_tab.round(-1),
+                                  q_tab.round(-1).pd())
+
+    dict_test = {'c1': -2,
+                 'c2': -1,
+                 'c3': -0,
+                 'c4':  1,
+                 'c5':  2,
+                 'c6':  3,
+                 'c7':  4}
+
+    q_res = q_tab.round(dict_test)
+    pd.testing.assert_frame_equal(p_tab.round(dict_test), q_res.pd())
+
+    pd.testing.assert_frame_equal(q_tab.dtypes.pd(), q_res.dtypes.pd())
 
 
 def test_pandas_min(q):
@@ -2053,3 +2250,37 @@ def test_pandas_isin(kx):
     assert keyed_tab.isin(dict_value).pd().equals(keyed_tab.pd().isin(dict_value))
     assert keyed_tab.isin(keyed_tab_value).pd().equals(keyed_tab.pd().isin(keyed_tab_value.pd()))
     assert keyed_tab.isin(tab_value).pd().equals(keyed_tab.pd().isin(tab_value))
+
+
+def test_nunique(kx, q):
+    tab = kx.q('([]a:4 0n 7 6;b:4 0n 0n 7;c:``foo`foo`)')
+    df = tab.pd()
+    p_m = df.nunique()
+    q_m = tab.nunique()
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.nunique(dropna=False)
+    q_m = tab.nunique(dropna=False)
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+
+    df = pd.DataFrame(
+        {
+            'a': [1, 2, 2, 4],
+            'b': [1, 2, 6, 7],
+            'c': [7, 8, 9, 10],
+        }
+    )
+    tab = kx.toq(df)
+    p_m = df.nunique()
+    q_m = tab.nunique()
+    for c in q.key(q_m).py():
+        assert p_m[c] == q_m[c].py()
+    p_m = df.nunique(axis=1)
+    q_m = tab.nunique(axis=1)
+    for c in range(len(tab)):
+        assert p_m[c] == q_m[c].py()
+
+    tab = kx.q('([]a:("";" ";"";"foo"))')
+    with pytest.raises(kx.QError):
+        raise tab.nunique()
