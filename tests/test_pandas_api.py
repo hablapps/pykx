@@ -2030,6 +2030,7 @@ def test_keyed_loc_fixes(q):
     with pytest.raises(KeyError):
         mkt['k1']
 
+
 def test_pandas_isin(kx):
     tab = kx.q("""([] k1: 0n 1. 0n 2. 0n;
                       k2: ("A";" ";"B";" ";"A");
@@ -2052,4 +2053,3 @@ def test_pandas_isin(kx):
     assert keyed_tab.isin(dict_value).pd().equals(keyed_tab.pd().isin(dict_value))
     assert keyed_tab.isin(keyed_tab_value).pd().equals(keyed_tab.pd().isin(keyed_tab_value.pd()))
     assert keyed_tab.isin(tab_value).pd().equals(keyed_tab.pd().isin(tab_value))
-    
