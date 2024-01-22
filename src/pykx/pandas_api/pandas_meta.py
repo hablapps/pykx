@@ -235,6 +235,30 @@ class PandasMeta:
         )
 
     @api_return
+    def sem(self, axis: int = 0, ddof: int = 1, numeric_only: bool = False):
+        tab = self
+        if 'Keyed' in str(type(tab)):
+            tab = q.value(tab)
+        if numeric_only:
+            tab = _get_numeric_only_subtable(tab)
+
+        key_str = '' if axis == 0 else '`$string '
+        val_str = '' if axis == 0 else '"f"$value '
+        query_str = 'cols[tab]' if axis == 0 else 'til[count[tab]]'
+        where_str = ' where not (::)~/:r[;1]'
+        sem_str = f'{{dev[x] % sqrt count[x]-{ddof}}}'
+
+        if ddof == len(tab):
+            return q(f'{{[tab]{query_str}!count[{query_str}]#0n}}', tab)
+
+        return q(
+            '{[tab]'
+            f'r:{{[tab; x] ({key_str}x; {sem_str} {val_str}tab[x])}}[tab;] each {query_str};'
+            f'(,/) {{(enlist x 0)!(enlist x 1)}} each r{where_str}}}',
+            tab
+        )
+
+    @api_return
     def abs(self, numeric_only=False):
         tab = self
         if numeric_only:
