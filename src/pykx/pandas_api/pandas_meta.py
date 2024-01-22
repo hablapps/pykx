@@ -239,23 +239,23 @@ class PandasMeta:
         else:
             ftable = q("""{ [table; values; is_tab; n_rows]
                         flip (cols table)!
-                        {[col_name;tab;values;v_is_tab; n_rows]
+                        {[col_name; tab; values; v_is_tab; n_rows]
                             col: tab col_name;
                             ltype: .Q.ty col;
                             values: $[99h~type values; values col_name; values];
-                            $[v_is_tab or ltype=" ";;
+                            $[v_is_tab or ltype=" "; ;
                                     values@:where (lower ltype) = .Q.t abs type each values];
                             $[0 = count values;
                                         (n_rows + count[col])#0b;
                                         $[v_is_tab;
-                                            $[any ltype = (" ";"C");~';=]
+                                            $[any ltype = (" ";"C"); ~'; =]
                                             [mlen#col;mlen#values],
                                                 (n_rows + max 0,count[col]-
                                                     mlen: min count[values],
                                                         count[col])#0b;
-                                            any $[any ltype = (" ";"C");~/:\:;=\:][values;col]
+                                            any $[any ltype = (" ";"C"); ~/:\:; =\:][values;col]
                                             ]
-                                ]}[;table;values;is_tab; n_rows]
+                                ]}[; table; values; is_tab; n_rows]
                         each cols table}""", tab, dic_value, is_tab, n_rows)
         return ftable.set_index(kcols) if key_table else ftable
 
