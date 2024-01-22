@@ -216,8 +216,8 @@ class PandasMeta:
         key_table = 'KeyedTable' in str(type(tab))
         key_value = 'KeyedTable' in str(type(values))
         n_rows = 0
-        false_dataframe_f = q("""{u:(cols x); 
-                            v:(count[u],count[x])#0b; 
+        false_dataframe_f = q("""{u:(cols x);
+                            v:(count[u],count[x])#0b;
                             flip u!v}""")
         if key_value and not key_table:
             return false_dataframe_f(tab)
@@ -225,7 +225,7 @@ class PandasMeta:
             kcols = q.key(tab)
             if key_value:
                 n_rows, tab = q("""{n_rows:max 0, count[x]-
-                                            count rows:(key y) inter key x; 
+                                            count rows:(key y) inter key x;
                                             (n_rows;
                                                x each rows)}""", tab, values)
                 values = q.value(values)
