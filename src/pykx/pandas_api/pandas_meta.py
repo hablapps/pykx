@@ -225,15 +225,14 @@ class PandasMeta:
             kcols = q.key(tab)
             if key_value:
                 n_rows, tab = q("""{n_rows:max 0, count[x]-
-                                            count rows:(key y) inter key x;
-                                            (n_rows;
-                                               x each rows)}""", tab, values)
+                                    count rows:(key y) inter key x;
+                                    (n_rows; x each rows)}""", tab, values)
                 values = q.value(values)
             else:
                 tab = q.value(tab)
         dic_value, is_tab = q("""{$[98h = type x;
-                                    (flip x; 1b);
-                                    (x; 0b)]}""", values)
+                                 (flip x; 1b);
+                                 (x; 0b)]}""", values)
         if key_table and not key_value and is_tab:
             ftable = false_dataframe_f(tab)
         else:
@@ -244,18 +243,17 @@ class PandasMeta:
                             ltype: .Q.ty col;
                             values: $[99h~type values; values col_name; values];
                             $[v_is_tab or ltype=" "; ;
-                                    values@:where (lower ltype) = .Q.t abs type each values];
+                                values@:where (lower ltype) = .Q.t abs type each values];
                             $[0 = count values;
-                                        (n_rows + count[col])#0b;
-                                        $[v_is_tab;
-                                            $[any ltype = (" ";"C"); ~'; =]
-                                            [mlen#col;mlen#values],
-                                                (n_rows + max 0,count[col]-
-                                                    mlen: min count[values],
-                                                        count[col])#0b;
-                                            any $[any ltype = (" ";"C"); ~/:\:; =\:][values;col]
-                                            ]
-                                ]}[; table; values; is_tab; n_rows]
+                                (n_rows + count[col])#0b;
+                                $[v_is_tab;
+                                    $[any ltype = (" ";"C"); ~'; =]
+                                        [mlen#col;mlen#values],
+                                            (n_rows + max 0,count[col]-
+                                            mlen: min count[values],
+                                            count[col])#0b;
+                                    any $[any ltype = (" ";"C"); ~/:\:; =\:][values;col]
+                        ]]}[; table; values; is_tab; n_rows]
                         each cols table}""", tab, dic_value, is_tab, n_rows)
         return ftable.set_index(kcols) if key_table else ftable
 
