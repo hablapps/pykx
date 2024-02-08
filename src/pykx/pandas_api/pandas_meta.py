@@ -162,23 +162,21 @@ class PandasMeta:
         if numeric_only:
             tab = _get_numeric_only_subtable(tab)
 
-        key_str = '' if axis == 0 else '`$string '
-        val_str = '' if axis == 0 else '"f"$value '
-        query_str = 'cols tab' if axis == 0 else 'til count tab'
-        where_str = ' where not (::)~/:r[;1]'
-        kurt_str = ('{res: x - avg x;'
-                    'n: count x;'
-                    'm2: sum res_sq: res xexp 2;'
-                    'm4: sum res_sq xexp 2;'
-                    'adj: 3 * xexp[n - 1;2] % (n - 2) * (n - 3);'
-                    'num: n * (n + 1) * (n - 1) * m4;'
-                    'den: (n - 2) * (n - 3) * m2 xexp 2;'
-                    '(num % den) - adj}')
+        axis_keys = q('{[axis;tab] $[0~axis;cols;`$string til count @] tab}', axis, tab)
+
         return q(
-            '{[tab]'
-            f'r:{{[tab; x] ({key_str}x; {kurt_str} {val_str}tab[x])}}[tab;] each {query_str};'
-            f'(,/) {{(enlist x 0)!(enlist x 1)}} each r{where_str}}}',
-            tab
+            '''{[tab;axis;axis_keys]
+                tab:$[0~axis;(::);flip] value flip tab;
+                kurt:{res: x - avg x;
+                      n: count x;
+                      m2: sum res_sq: res xexp 2;
+                      m4: sum res_sq xexp 2;
+                      adj: 3 * xexp[n - 1;2] % (n - 2) * (n - 3);
+                      num: n * (n + 1) * (n - 1) * m4;
+                      den: (n - 2) * (n - 3) * m2 xexp 2;
+                      (num % den) - adj};
+                axis_keys!kurt each tab}
+            ''', tab, axis, axis_keys
         )
 
     @api_return
@@ -238,20 +236,17 @@ class PandasMeta:
         if numeric_only:
             tab = _get_numeric_only_subtable(tab)
 
-        key_str = '' if axis == 0 else '`$string '
-        val_str = '' if axis == 0 else '"f"$value '
-        query_str = 'cols[tab]' if axis == 0 else 'til[count[tab]]'
-        where_str = ' where not (::)~/:r[;1]'
-        sem_str = f'{{dev[x] % sqrt count[x]-{ddof}}}'
+        axis_keys = q('{[axis;tab] $[0~axis;cols;`$string til count @] tab}', axis, tab)
 
         if ddof == len(tab):
-            return q(f'{{[tab]{query_str}!count[{query_str}]#0n}}', tab)
+            return q('{x!count[x]#0n}', axis_keys)
 
         return q(
-            '{[tab]'
-            f'r:{{[tab; x] ({key_str}x; {sem_str} {val_str}tab[x])}}[tab;] each {query_str};'
-            f'(,/) {{(enlist x 0)!(enlist x 1)}} each r{where_str}}}',
-            tab
+            '''{[tab;axis;ddof;axis_keys]
+                tab:$[0~axis;(::);flip] value flip tab;
+                d:{dev[x] % sqrt count[x]-y}[;ddof];
+                axis_keys!d each tab}
+            ''', tab, axis, ddof, axis_keys
         )
 
     @api_return
