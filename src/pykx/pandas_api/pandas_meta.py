@@ -167,10 +167,11 @@ class PandasMeta:
         return q(
             '''{[tab;axis;axis_keys]
                 tab:$[0~axis;(::);flip] value flip tab;
-                kurt:{res: x - avg x;
+                kurt:{[x]
+                      res: x - avg x;
                       n: count x;
-                      m2: sum res_sq: res xexp 2;
-                      m4: sum res_sq xexp 2;
+                      m2: sum rsq: res xexp 2;
+                      m4: sum rsq xexp 2;
                       adj: 3 * xexp[n - 1;2] % (n - 2) * (n - 3);
                       num: n * (n + 1) * (n - 1) * m4;
                       den: (n - 2) * (n - 3) * m2 xexp 2;
@@ -244,7 +245,7 @@ class PandasMeta:
         return q(
             '''{[tab;axis;ddof;axis_keys]
                 tab:$[0~axis;(::);flip] value flip tab;
-                d:{dev[x] % sqrt count[x]-y}[;ddof];
+                d:{dev[x] % sqrt count[x] - y}[;ddof];
                 axis_keys!d each tab}
             ''', tab, axis, ddof, axis_keys
         )
