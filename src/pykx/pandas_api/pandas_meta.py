@@ -155,6 +155,32 @@ class PandasMeta:
         )
 
     @api_return
+    def kurt(self, axis: int = 0, numeric_only: bool = False):
+        tab = self
+        if 'Keyed' in str(type(tab)):
+            tab = q.value(tab)
+        if numeric_only:
+            tab = _get_numeric_only_subtable(tab)
+
+        axis_keys = q('{[axis;tab] $[0~axis;cols;`$string til count @] tab}', axis, tab)
+
+        return q(
+            '''{[tab;axis;axis_keys]
+                tab:$[0~axis;(::);flip] value flip tab;
+                kurt:{[x]
+                      res: x - avg x;
+                      n: count x;
+                      m2: sum rsq: res xexp 2;
+                      m4: sum rsq xexp 2;
+                      adj: 3 * xexp[n - 1;2] % (n - 2) * (n - 3);
+                      num: n * (n + 1) * (n - 1) * m4;
+                      den: (n - 2) * (n - 3) * m2 xexp 2;
+                      (num % den) - adj};
+                axis_keys!kurt each tab}
+            ''', tab, axis, axis_keys
+        )
+
+    @api_return
     def median(self, axis: int = 0, numeric_only: bool = False):
         tab = self
         if 'Keyed' in str(type(tab)):
@@ -204,6 +230,27 @@ class PandasMeta:
         )
 
     @api_return
+    def sem(self, axis: int = 0, ddof: int = 1, numeric_only: bool = False):
+        tab = self
+        if 'Keyed' in str(type(tab)):
+            tab = q.value(tab)
+        if numeric_only:
+            tab = _get_numeric_only_subtable(tab)
+
+        axis_keys = q('{[axis;tab] $[0~axis;cols;`$string til count @] tab}', axis, tab)
+
+        if ddof == len(tab):
+            return q('{x!count[x]#0n}', axis_keys)
+
+        return q(
+            '''{[tab;axis;ddof;axis_keys]
+                tab:$[0~axis;(::);flip] value flip tab;
+                d:{dev[x] % sqrt count[x] - y}[;ddof];
+                axis_keys!d each tab}
+            ''', tab, axis, ddof, axis_keys
+        )
+
+    @api_return
     def abs(self, numeric_only=False):
         tab = self
         if numeric_only:
@@ -244,6 +291,18 @@ class PandasMeta:
         return (q(
             '''{[row;tab;axis]
                 row:{$[11h~type x; {[x1; y1] $[x1 > y1; x1; y1]} over x; max x]} each row;
+                m:$[0~axis; (::); flip] value flip tab;
+                $[0~axis; (::); cols tab] m {$[abs type y;x]?y}' row}
+            ''', res, tab[ix], axis), cols)
+
+    @convert_result
+    def idxmin(self, axis=0, skipna=True, numeric_only=False):
+        tab = self
+        axis = q('{$[11h~type x; `index`columns?x; x]}', axis)
+        res, cols, ix = preparse_computations(tab, axis, skipna, numeric_only)
+        return (q(
+            '''{[row;tab;axis]
+                row:{$[11h~type x; {[x1; y1] $[x1 < y1; x1; y1]} over x; min x]} each row;
                 m:$[0~axis; (::); flip] value flip tab;
                 $[0~axis; (::); cols tab] m {$[abs type y;x]?y}' row}
             ''', res, tab[ix], axis), cols)
@@ -323,3 +382,19 @@ class PandasMeta:
             return data
         else:
             return (q('{(flip enlist[`function]!enlist x)!y}', keyname, data))
+
+    @api_return
+    def isna(self):
+        return q.null(self)
+
+    @api_return
+    def isnull(self):
+        return self.isna()
+
+    @api_return
+    def notna(self):
+        return q('not', self.isna())
+
+    @api_return
+    def notnull(self):
+        return self.notna()
