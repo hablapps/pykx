@@ -2110,7 +2110,7 @@ def test_keyed_loc_fixes(q):
 
 
 def test_nunique(kx, q):
-    tab = kx.q('([]a:4 0n 7 6;b:4 0n 0n 7;c:``foo`foo`)')
+    tab = kx.q('([]a:4 0n 7 6;b:4 0n 0n 7;c:4.1 2.0 3.1 2.0)')
     df = tab.pd()
     p_m = df.nunique()
     q_m = tab.nunique()

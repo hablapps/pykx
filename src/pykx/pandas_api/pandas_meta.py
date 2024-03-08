@@ -292,10 +292,7 @@ class PandasMeta:
 
     @convert_result
     def nunique(self, axis=0, dropna=True):
-        res, cols = preparse_computations(self, axis, skipna=False)
-        filternan = q('{$[all[10h=type each x]|11h = type x;x;'
-                      'x where not null x]}each')
-        res = filternan(res) if dropna else res
+        res, cols = preparse_computations(self, axis, skipna=dropna)
         return (q("('[count;distinct]')", res), cols)
 
     def agg(self, func, axis=0, *args, **kwargs): # noqa: C901
