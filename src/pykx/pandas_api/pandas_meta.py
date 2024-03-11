@@ -290,6 +290,11 @@ class PandasMeta:
             min_count
         ), cols)
 
+    @convert_result
+    def nunique(self, axis=0, dropna=True):
+        res, cols = preparse_computations(self, axis, skipna=dropna)
+        return (q("('[count;distinct]')", res), cols)
+
     def agg(self, func, axis=0, *args, **kwargs): # noqa: C901
         if 'KeyedTable' in str(type(self)):
             raise NotImplementedError("'agg' method not presently supported for KeyedTable")
