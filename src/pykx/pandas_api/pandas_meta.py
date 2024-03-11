@@ -243,6 +243,53 @@ class PandasMeta:
             tab = _get_numeric_only_subtable(self)
         return q.abs(tab)
 
+    @api_return
+    def isin(self, values):
+        tab = self
+        key_table = 'KeyedTable' in str(type(tab))
+        key_value = 'KeyedTable' in str(type(values))
+        n_rows = 0
+        false_dataframe_f = q("""{u:(cols x);
+                            v:(count[u],count[x])#0b;
+                            flip u!v}""")
+        if key_value and not key_table:
+            return false_dataframe_f(tab)
+        if key_table:
+            kcols = q.key(tab)
+            if key_value:
+                n_rows, tab = q("""{n_rows:max 0, count[x]-
+                                    count rows:(key y) inter key x;
+                                    (n_rows; x each rows)}""", tab, values)
+                values = q.value(values)
+            else:
+                tab = q.value(tab)
+        dic_value, is_tab = q("""{$[98h = type x;
+                                 (flip x; 1b);
+                                 (x; 0b)]}""", values)
+        if key_table and not key_value and is_tab:
+            ftable = false_dataframe_f(tab)
+        else:
+            ftable = q("""{ [table; values; is_tab; n_rows]
+                        flip (cols table)!
+                        {[col_name; tab; values; v_is_tab; n_rows]
+                            col: tab col_name;
+                            ltype: .Q.ty col;
+                            values: $[99h~type values; values col_name; values];
+                            $[v_is_tab or ltype=" "; ;
+                                values@:where (lower ltype) = .Q.t abs type each values];
+                            $[0 = count values;
+                                (n_rows + count[col])#0b;
+                                $[v_is_tab;
+                                    $[any ltype = (" ";"C"); ~'; =]
+                                        [mlen#col;mlen#values],
+                                            (n_rows + max 0,count[col]-
+                                            mlen: min count[values],
+                                            count[col])#0b;
+                                    any $[any ltype = (" ";"C"); ~/:\:; =\:][values;col]
+                        ]]}[; table; values; is_tab; n_rows]
+                        each cols table}""", tab, dic_value, is_tab, n_rows)
+        return ftable.set_index(kcols) if key_table else ftable
+
     @convert_result
     def all(self, axis=0, bool_only=False, skipna=True):
         res, cols = preparse_computations(self, axis, skipna, bool_only=bool_only)
