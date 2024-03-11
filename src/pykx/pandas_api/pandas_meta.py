@@ -104,6 +104,28 @@ _type_mapping = {'c': b'kx.Char',
                  '': b'kx.List'}
 
 
+# Define the mapping between the returns of kx.*Vector.t and the associated typechar
+_typenum_to_typechar_mapping = {0: '',
+                                1: 'b',
+                                2: 'g',
+                                4: 'x',
+                                5: 'h',
+                                6: 'i',
+                                7: 'j',
+                                8: 'e',
+                                9: 'f',
+                                10: 'c',
+                                11: 's',
+                                12: 'p',
+                                14: 'd',
+                                15: 'z',
+                                16: 'n',
+                                17: 'u',
+                                18: 'v',
+                                19: 't',
+                                13: 'm'}
+
+
 class PandasMeta:
     # Dataframe properties
     @property
@@ -242,6 +264,31 @@ class PandasMeta:
         if numeric_only:
             tab = _get_numeric_only_subtable(self)
         return q.abs(tab)
+
+    @api_return
+    def round(self, decimals=0):
+        tab = self
+        if 'Keyed' in str(type(tab)):
+            tab = q.value(tab)
+
+        affected_cols = _get_numeric_only_subtable(tab).columns.py()
+        type_dict = {col: _typenum_to_typechar_mapping[tab[col].t] for col in affected_cols}
+
+        cast_back = q('{string[y][0]$x}')
+
+        if isinstance(decimals, int) or q("{-7h~type x}", decimals):
+            dec_dict = {col: decimals for col in affected_cols}
+        elif isinstance(decimals, dict) or (q("{99h~type x}", decimals) and
+                                            'Keyed' not in str(type(decimals))):
+            dec_dict = {col: decimals[col] for col in affected_cols}
+        else:
+            raise TypeError('Parameter "decimals" should be integer or dictionary.')
+
+        rounded = {col: [cast_back(round(elem, dec_dict[col]), type_dict[col])
+                         for elem in tab[col]]
+                   for col in dec_dict}
+
+        return q.qsql.update(tab, columns=rounded)
 
     @convert_result
     def all(self, axis=0, bool_only=False, skipna=True):
