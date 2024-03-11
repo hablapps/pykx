@@ -243,6 +243,76 @@ class PandasMeta:
             tab = _get_numeric_only_subtable(self)
         return q.abs(tab)
 
+    @api_return
+    def isin(self, values):
+        tab = self
+
+        keyed_in = 'KeyedTable' in str(type(tab))
+        keyed_val = 'KeyedTable' in str(type(values))
+
+        false_table = q("""{u:$[99h~type x;cols value x;cols x];
+                            v:(count[u],count[x])#0b;
+                            t:flip u!v;
+                            $[99h~type x;key[x]!t;t]}""", tab)
+
+        isin_tab = q('''{[it;vt;ft]
+                          idxt:raze value flip key it;
+                          colt:1_cols it;
+                          idxv:raze value flip key vt;
+                          colv:1_cols vt;
+                          p:(idxt inter idxv) cross colt inter colv;
+                          cv:{[k1;k2;ti;tv]
+                            enlist[ti[k1][k2]] in enlist[tv[k1][k2]]}[;;it;vt];
+                          vals:flip `x`field`values!flip[p],flip cv .' p;
+                          aux:exec ((`$string field)!values) by x:x from vals;
+                          aux or ft}''')
+
+        gen_idx = q('{flip enlist[`x]!enlist til x}')
+
+        # list (PyKX and Python)
+        if "list" in str(type(values)).lower():
+            return q('{x in y}', tab, values)
+        # table
+        elif q('{98h~type x}', values):
+            if keyed_in != keyed_val:
+                return false_table
+
+            idx_tab = gen_idx(len(tab))
+            idx_values = gen_idx(len(values))
+            return q.value(isin_tab(tab.set_index(idx_tab),
+                                    values.set_index(idx_values),
+                                    false_table.set_index(idx_tab)))
+        # keyed table
+        elif keyed_val:
+            if keyed_in != keyed_val or len(q.key(tab).columns) != len(q.key(values).columns):
+                return false_table
+
+            old_idx_tab = q.key(tab)
+            idx_tab = gen_idx(len(tab))
+
+            idx_values = q('''{kt:flip value flip key x;
+                               kv:flip value flip key y;
+                               flip enlist[`x]!enlist count[kv]#kt?inter[kv;kt]}''', tab, values)
+
+            res =  q.value(isin_tab(q.value(tab).set_index(idx_tab),
+                                    q.value(values).set_index(idx_values),
+                                    q.value(false_table).set_index(idx_tab)))
+
+            return res.set_index(old_idx_tab)
+        # dict
+        elif isinstance(values, dict) or q('{99h~type x}', values):
+            return q('''{[t;d]
+                          tv:$[kt:99h~type t;value t;t];
+                          cd:{[k;t;d]
+                            $[k in key d;
+                              t[k] in d[k];
+                              count[t]#0b]}[;tv;d];
+                          r:flip cols[tv]!cd each cols tv;
+                          $[kt;key[t]!r;r]}
+                     ''', tab, values)
+        else:
+            raise ValueError("Not a valid argument type.")
+
     @convert_result
     def all(self, axis=0, bool_only=False, skipna=True):
         res, cols = preparse_computations(self, axis, skipna, bool_only=bool_only)

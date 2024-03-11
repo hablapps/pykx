@@ -2109,6 +2109,60 @@ def test_keyed_loc_fixes(q):
         mkt['k1']
 
 
+def test_pandas_isin(kx):
+    tab = kx.q("""([] k1: 0n 1. 0n 2. 0n;
+                      k2: ("A";" ";"B";" ";"A");
+                      k3: (`a;1.;`c;5;`d))""")
+    keyed_tab = kx.q("""([`a`b`c`d`e]
+                        k1: 0n 1. 0n 2. 0n;
+                        k2: ("A";" ";"B";" ";"A");
+                        k3: (`a;1.;`c;5;`d))""")
+
+    multi_keyed_index = kx.q('([]x:0 1 0 1;y:0 0 1 1)')
+    multi_keyed_table = kx.q('''([]a:`foo`bar`baz`qux;
+                                   b:"f"$til 4;
+                                   c:reverse "f"$til 4)''').set_index(multi_keyed_index)
+
+    list_value = kx.q('(`a;1.;"A")')
+    tab_value = kx.q('([] k1: 1. 2. 3.; k2: ("A";"B";"C"))')
+    dict_value = {"k1": [1., 2., 3.]}
+    keyed_tab_value = kx.q('([`a`b] k1: 1. 2.; k2: ("A";"B"))')
+    multi_keyed_value_index = kx.q('([]x:1 1 0;y:0 1 0)')
+    multi_keyed_value = kx.q('''([]a:`bar`foo`foo;
+                                   b:0 1 0)''').set_index(multi_keyed_value_index)
+
+    pd.testing.assert_frame_equal(tab.isin(list_value).pd(),
+                                  tab.pd().isin(list_value.py()))
+    pd.testing.assert_frame_equal(tab.isin(dict_value).pd(),
+                                  tab.pd().isin(dict_value))
+    pd.testing.assert_frame_equal(tab.isin(tab_value).pd(),
+                                  tab.pd().isin(tab_value.pd()))
+    pd.testing.assert_frame_equal(tab.isin(keyed_tab_value).pd(),
+                                  tab.pd().isin(keyed_tab_value.pd()))
+
+    pd.testing.assert_frame_equal(keyed_tab.isin(list_value).pd(),
+                                  keyed_tab.pd().isin(list_value.py()))
+    pd.testing.assert_frame_equal(keyed_tab.isin(dict_value).pd(),
+                                  keyed_tab.pd().isin(dict_value))
+    pd.testing.assert_frame_equal(keyed_tab.isin(tab_value).pd(),
+                                  keyed_tab.pd().isin(tab_value.pd()))
+    pd.testing.assert_frame_equal(keyed_tab.isin(keyed_tab_value).pd(),
+                                  keyed_tab.pd().isin(keyed_tab_value.pd()))
+    pd.testing.assert_frame_equal(keyed_tab.isin(multi_keyed_value).pd(),
+                                  keyed_tab.pd().isin(multi_keyed_value.pd()))
+
+    pd.testing.assert_frame_equal(multi_keyed_table.isin(list_value).pd(),
+                                  multi_keyed_table.pd().isin(list_value.py()))
+    pd.testing.assert_frame_equal(multi_keyed_table.isin(dict_value).pd(),
+                                  multi_keyed_table.pd().isin(dict_value))
+    pd.testing.assert_frame_equal(multi_keyed_table.isin(tab_value).pd(),
+                                  multi_keyed_table.pd().isin(tab_value.pd()))
+    pd.testing.assert_frame_equal(multi_keyed_table.isin(multi_keyed_value).pd(),
+                                  multi_keyed_table.pd().isin(multi_keyed_value.pd()))
+    pd.testing.assert_frame_equal(multi_keyed_table.isin(keyed_tab_value).pd(),
+                                  multi_keyed_table.pd().isin(keyed_tab_value.pd()))
+
+
 def test_pandas_count(q):
     tab = q('([] k1: 0n 2 0n 2 0n ; k2: (`a;`;`b;`;`c))')
     df = tab.pd()
