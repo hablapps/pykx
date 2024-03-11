@@ -1874,6 +1874,31 @@ def test_pandas_round(kx, q):
 
     pd.testing.assert_frame_equal(q_tab.dtypes.pd(), q_res.dtypes.pd())
 
+    q_res = q_tab.round(kx.toq(dict_test))
+    pd.testing.assert_frame_equal(p_tab.round(dict_test), q_res.pd())
+
+    pd.testing.assert_frame_equal(q_tab.dtypes.pd(), q_res.dtypes.pd())
+
+    with pytest.raises(TypeError):
+        q_tab.round(.1)
+
+    err_tab = pd.DataFrame({
+        "time": [
+            pd.Timestamp("2016-05-25 13:30:00.023"),
+            pd.Timestamp("2016-05-25 13:30:00.038"),
+            pd.Timestamp("2016-05-25 13:30:00.048"),
+            pd.Timestamp("2016-05-25 13:30:00.048"),
+            pd.Timestamp("2016-05-25 13:30:00.048")
+        ],
+        "ticker": ["MSFT", "MSFT", "GOOG", "GOOG", "AAPL"],
+        "price": [51.95, 51.95, 720.77, 720.92, 98.0],
+        "quantity": [75, 155, 100, 100, 100]
+    })
+
+    q_err_tab = q('1!', kx.toq(err_tab))
+    with pytest.raises(TypeError):
+        q_tab.round(q_err_tab)
+
 
 def test_pandas_min(q):
     tab = q('([] sym: 100?`foo`bar`baz`qux; price: 250.0f - 100?500.0f; ints: 100 - 100?200)')

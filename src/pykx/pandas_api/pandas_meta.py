@@ -1,5 +1,3 @@
-from typing import Dict, Union
-
 from . import api_return
 from ..exceptions import QError
 
@@ -268,7 +266,7 @@ class PandasMeta:
         return q.abs(tab)
 
     @api_return
-    def round(self, decimals: Union[int, Dict[str, int]] = 0):
+    def round(self, decimals=0):
         tab = self
         if 'Keyed' in str(type(tab)):
             tab = q.value(tab)
@@ -278,10 +276,13 @@ class PandasMeta:
 
         cast_back = q('{string[y][0]$x}')
 
-        if isinstance(decimals, int):
+        if isinstance(decimals, int) or q("{-7h~type x}", decimals):
             dec_dict = {col: decimals for col in affected_cols}
-        else:
+        elif isinstance(decimals, dict) or (q("{99h~type x}", decimals) and
+                                            'Keyed' not in str(type(decimals))):
             dec_dict = {col: decimals[col] for col in affected_cols}
+        else:
+            raise TypeError('Parameter "decimals" should be integer or dictionary.')
 
         rounded = {col: [cast_back(round(elem, dec_dict[col]), type_dict[col])
                          for elem in tab[col]]
